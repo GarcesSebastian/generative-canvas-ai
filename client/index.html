@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Konva.js</title>
+    <script src="https://cdn.rawgit.com/konvajs/konva/8.3.5/konva.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f4;
+        }
+        #container {
+            border: 2px solid #333;
+            width: 100%;
+            height: 80vh; /* Cambia la altura para un diseño más equilibrado */
+            background-color: #fff; /* Fondo blanco para el área de dibujo */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Sombra para profundidad */
+            margin-top: 20px; /* Espacio entre el formulario y el canvas */
+        }
+        #prompt-form {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px; /* Margen superior */
+            width: 100%; /* Asegura que el formulario ocupe el ancho completo */
+        }
+        #prompt {
+            padding: 10px;
+            width: 60%; /* Ancho del input */
+            border: 2px solid #007bff;
+            border-radius: 5px 0 0 5px;
+            font-size: 16px;
+            outline: none; /* Elimina el contorno por defecto */
+            transition: border-color 0.3s; /* Transición suave para el borde */
+        }
+        #prompt:focus {
+            border-color: #0056b3; /* Color del borde al enfocar */
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff; /* Color de fondo del botón */
+            color: #fff; /* Color del texto del botón */
+            border: none;
+            border-radius: 0 5px 5px 0; /* Bordes redondeados */
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s; /* Transición suave para el color de fondo */
+        }
+        button:hover {
+            background-color: #0056b3; /* Color del botón al pasar el mouse */
+        }
+    </style>
+</head>
+<body>
+    <form id="prompt-form">
+        <input type="text" id="prompt" placeholder="Describe lo que quieres dibujar" required />
+        <button type="submit">Dibujar</button>
+    </form>
+    <div id="container"></div>
+    <script src="app.js"></script>
+</body>
+</html>
