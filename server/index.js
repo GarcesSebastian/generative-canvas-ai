@@ -14,16 +14,11 @@ app.use(cors());
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
 
-const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-pro-002",
-});
+const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
 
 const generationConfig = {
     temperature: 0.7,
-    topP: 0.95,
-    topK: 40,
     maxOutputTokens: 8192,
-    responseMimeType: "application/json",
     responseSchema: {
         type: "object",
         properties: {
@@ -35,7 +30,7 @@ const generationConfig = {
                         action: { type: "string" },
                         id: { type: "string" },
                         shape: { type: "string" },
-                        color: { type: "string" },
+                        fill: { type: "string" },
                         x: { type: "number" },
                         y: { type: "number" },
                         size: {
@@ -53,22 +48,31 @@ const generationConfig = {
                     },
                     required: ["action"]
                 }
+            },
+            resume: {
+                type: "string"
             }
         },
-        required: ["canvasShapes"]
+        required: ["canvasShapes", "resume"]
     }
 };
 
-function normalizeShape(shape) {
+const cache = new Map();
+
+function normalizeShape(shape, existingShapes) {
+    if (shape.action === 'edit' || shape.action === 'delete') {
+        return shape
+    }
+
     const defaultSize = { width: 100, height: 100 };
-    const normalizedShape = {
-        action: shape.action || 'add',
+    let normalizedShape = {
+        action: 'add',
         shape: shape.shape || 'circle',
-        color: shape.color || "#000000", // Negro por defecto
+        fill: shape.fill || "#000000",
         x: shape.x !== undefined ? Math.round(shape.x) : 400,
         y: shape.y !== undefined ? Math.round(shape.y) : 300,
         size: shape.size || defaultSize,
-        id: shape.id || `shape${Date.now()}`,
+        id: `shape${Date.now()}`,
         rotation: shape.rotation || 0,
     };
 
@@ -91,61 +95,80 @@ function normalizeShape(shape) {
     return normalizedShape;
 }
 
+function validateShapeInput(shape) {
+    let newShape = shape;
+    if (typeof shape.x != 'number' || typeof shape.y != 'number') {
+    }
+    
+    return newShape;
+}
+
 app.post('/generate-canvas', async (req, res) => {
     const { prompt, canvasSummary } = req.body;
+    
+    if (cache.has(prompt)) {
+        return res.json(cache.get(prompt));
+    }
 
     try {
-        const chatSession = model.startChat({
+        const fullPrompt = `${instructions}\n\nUsuario: ${prompt}\n\nContexto actual: ${JSON.stringify(canvasSummary)}`;
+
+        console.log('Generating content with prompt:', fullPrompt);
+
+        const result = await model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: fullPrompt }]}],
             generationConfig,
-            history: [],
         });
 
-        const contextActual = JSON.stringify(canvasSummary);
-        const fullPrompt = `${instructions.replace('{contextActual}', contextActual)}\n\nUsuario: ${prompt}\n\nGenera las instrucciones para manipular el canvas basadas en este prompt y el contexto actual, siguiendo ESTRICTAMENTE el esquema de respuesta especificado.`;
-
-        console.log('Prompt completo: \n', fullPrompt);
-
-        const result = await chatSession.sendMessage(fullPrompt);
+        const response = await result.response;
+        const text = response.text();
 
         let jsonResponse;
+        const textFormatted = text.replace(/`/g, '"');
         try {
-            jsonResponse = JSON.parse(result.response.text().trim());
+            jsonResponse = JSON.parse(textFormatted);
         } catch (parseError) {
-            console.error('Error al parsear la respuesta JSON:', parseError);
-            return res.status(400).send('La respuesta del modelo no es un JSON válido');
+            console.error('Error parsing JSON response:', parseError);
+            console.error('Response:', textFormatted);
+            return res.status(400).send('Model response is not valid JSON');
         }
 
         if (!jsonResponse.canvasShapes || !Array.isArray(jsonResponse.canvasShapes)) {
-            return res.status(400).send('La respuesta no contiene un array canvasShapes válido');
+            return res.status(400).send('Response does not contain a valid canvasShapes array');
         }
 
-        const normalizedShapes = jsonResponse.canvasShapes.map(normalizeShape);
-
-        console.log('Formas normalizadas:', normalizedShapes);
+        const normalizedShapes = jsonResponse.canvasShapes.map(shape => normalizeShape(shape, canvasSummary));
 
         const isValid = normalizedShapes.every(shape => 
             shape.action && 
             (shape.action === 'add' || shape.action === 'edit' || shape.action === 'delete') &&
-            (shape.action !== 'add' || (shape.shape && shape.color && 
+            (shape.action !== 'add' || (shape.shape && shape.fill && 
                 typeof shape.x === 'number' && typeof shape.y === 'number' &&
                 shape.size && typeof shape.size.width === 'number' && typeof shape.size.height === 'number')) &&
             (shape.action !== 'edit' || shape.id) &&
             (shape.action !== 'delete' || shape.id)
         );
 
+        const test = normalizedShapes.map(shape => validateShapeInput(shape));
+
+        console.log('Normalized shapes:', test);
+        
         if (!isValid) {
-            console.error('La respuesta contiene formas inválidas:', normalizedShapes);
-            return res.status(400).send('La respuesta contiene formas que no cumplen con todos los requisitos');
+            console.error('Response contains invalid shapes:', normalizedShapes);
+            return res.status(400).send('Response contains shapes that do not meet all requirements');
         }
 
-        res.json({ canvasShapes: normalizedShapes });
+        const finalResponse = { canvasShapes: normalizedShapes, resume: jsonResponse.resume };
+        cache.set(prompt, finalResponse);
+        
+        res.json(finalResponse);
     } catch (error) {
-        console.error('Error en la generación de instrucciones:', error);
-        res.status(500).send('Error al generar las instrucciones');
+        console.error('Error in instruction generation:', error);
+        res.status(500).send('Error generating instructions');
     }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor escuchando en http://localhost:${PORT}`);
+    console.log(`Server listening on http://localhost:${PORT}`);
 });

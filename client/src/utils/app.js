@@ -7,6 +7,8 @@ const stage = new Konva.Stage({
     height: 600,
 });
 
+const elements = []
+
 const layer = new Konva.Layer();
 stage.add(layer);
 
@@ -18,7 +20,7 @@ function getCanvasSummary() {
     return stage.find('Shape').map(shape => ({
         id: shape.id(),
         shape: shape.getClassName(),
-        color: shape.fill(),
+        fill: shape.fill(),
         x: shape.x(),
         y: shape.y(),
         width: shape.width(),
@@ -27,9 +29,7 @@ function getCanvasSummary() {
     }));
 }
 
-document.getElementById('prompt-form').addEventListener('submit', async function (event) {
-    event.preventDefault();
-    const prompt = document.getElementById('prompt').value;
+export async function generateCanvas(prompt){
     const canvasSummary = getCanvasSummary();
 
     const response = await fetch('http://localhost:3000/generate-canvas', {
@@ -42,6 +42,13 @@ document.getElementById('prompt-form').addEventListener('submit', async function
 
     const result = await response.json();
     applyCanvasChanges(result.canvasShapes);
+    console.log(result.resume);
+}
+
+document.getElementById('prompt-form').addEventListener('submit', async function (event) {
+    event.preventDefault();
+    const prompt = document.getElementById('prompt').textContent;
+    generateCanvas(prompt);
 });
 
 function applyCanvasChanges(changes) {
@@ -63,11 +70,12 @@ function applyCanvasChanges(changes) {
 
 function addShape(instruction) {
     let shape;
+    console.log('Adding shape', instruction);
     const commonProps = {
         id: generateId(),
         x: instruction.x,
         y: instruction.y,
-        fill: instruction.color,
+        fill: instruction.fill,
         rotation: instruction.rotation || 0,
         width: instruction.size.width,
         height: instruction.size.height,
@@ -96,7 +104,7 @@ function addShape(instruction) {
             shape = new Konva.Line({
                 ...commonProps,
                 points: [0, 0, instruction.size.width, instruction.size.height],
-                stroke: instruction.color,
+                stroke: instruction.fill,
             });
             break;
         case 'star':
@@ -110,7 +118,9 @@ function addShape(instruction) {
     }
 
     if (shape) {
+        console.log('Adding shape', shape);
         layer.add(shape);
+        elements.push(shape);
     }
 }
 
@@ -122,6 +132,13 @@ function editShape(instruction) {
 }
 
 function deleteShape(id) {
+    elements.forEach((element, index) => {
+        console.log('Checking element', element.id(), id);
+        if (element.id() === id) {
+            element.destroy();
+            elements.splice(index, 1);
+        }
+    });
     const shape = stage.findOne('#' + id);
     if (shape) {
         shape.destroy();

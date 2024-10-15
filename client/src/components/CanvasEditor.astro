@@ -1,37 +1,17 @@
----
----
-
-<div class="canvas-editor">
-  <form id="prompt-form">
-    <textarea id="prompt" placeholder="Describe lo que quieres dibujar"></textarea>
-    <button type="submit">Dibujar</button>
+<div class="canvas-editor mx-auto p-4 bg-gray-900 rounded-lg shadow-lg">
+  <form id="prompt-form" class="flex flex-col gap-4">
+    <div id="prompt" contenteditable="true" class="w-full h-20 bg-gray-800 text-white border border-gray-700 rounded-md p-2 resize-none font-mono text-base"></div>
+    <div class="controls flex gap-4">
+      <button type="submit" class="draw-button bg-green-600 text-white rounded-md px-4 py-2 text-lg transition-colors hover:bg-green-500">Dibujar</button>
+      <button type="button" id="record-audio" class="audio-button bg-red-600 text-white rounded-md px-4 py-2 text-lg transition-colors hover:bg-red-500">🎤 Grabar Audio</button>
+    </div>
   </form>
-  <div id="container"></div>
+  <div id="container" class="w-full max-w-[800px] h-[600px] bg-gray-800 border border-gray-700 rounded-md flex items-center justify-center text-white text-2xl mt-4">
+    Contenedor
+  </div>
+  <div id="audio-player" class="hidden mt-4">
+    <audio controls class="w-full">
+      Tu navegador no soporta el elemento de audio.
+    </audio>
+  </div>
 </div>
-
-<style>
-  .canvas-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    width: 100%;
-    max-width: 800px;
-  }
-  textarea {
-    width: 100%;
-    height: 60px;
-    background-color: #2c2c2c;
-    color: white;
-    border: 1px solid #444;
-    border-radius: 4px;
-    padding: 0.5rem;
-    font-family: monospace;
-    resize: none;
-  }
-  #container {
-    width: 800px
-    height: 400px;
-    border: 1px solid #444;
-    border-radius: 4px;
-  }
-</style>
